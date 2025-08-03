@@ -1,0 +1,53 @@
+// backend/src/controllers/receiptController.js
+const path = require('path');
+const tesseract = require('tesseract.js');
+const receiptService = require('../services/receiptService');
+
+// Utility for file upload (multer) already set up in utils/multer.js
+const uploadReceiptFile = require('../utils/multer');
+
+exports.list = async (req, res) => {
+  const receipts = await receiptService.listReceipts(req.user.id);
+  res.json(receipts);
+};
+
+exports.upload = async (req, res) => {
+  await new Promise((resolve, reject) =>
+    uploadReceiptFile(req, res, err => (err ? reject(err) : resolve()))
+  );
+
+  if (!req.file) {
+    return res.status(400).json({ message: 'Receipt image file is required.' });
+  }
+
+  // Perform OCR
+  const worker = await tesseract.createWorker();
+  await worker.load();
+  await worker.loadLanguage('eng');
+  await worker.initialize('eng');
+
+  const { data: { text } } = await worker.recognize(req.file.path);
+  await worker.terminate();
+
+  // Naively parse lines into item names
+  const lines = text
+    .split('\n')
+    .map(l => l.trim())
+    .filter(l => l && /^[A-Za-z0-9]/.test(l));
+
+  const items = lines.map(line => ({ name: line, quantity: 1 }));
+
+  const receipt = await receiptService.uploadReceipt({
+    userId: req.user.id,
+    store: req.body.store,
+    total: req.body.total,
+    date: req.body.date,
+    imageUrl: req.file.filename,
+    items
+  });
+
+  res.status(201).json({
+    receiptId: receipt.id,
+    parsedItems: items
+  });
+};
