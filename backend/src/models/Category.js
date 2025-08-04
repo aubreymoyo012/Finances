@@ -1,3 +1,4 @@
+// models/Category.js
 module.exports = (sequelize, DataTypes) => {
   const Category = sequelize.define('Category', {
     id: {
@@ -9,8 +10,73 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       unique: true,
       allowNull: false,
+      validate: {
+        notEmpty: {
+          msg: 'Category name cannot be empty'
+        },
+        len: {
+          args: [2, 50],
+          msg: 'Category name must be between 2 and 50 characters'
+        }
+      }
     },
+    type: {
+      type: DataTypes.ENUM('expense', 'income', 'transfer', 'savings'),
+      allowNull: false,
+      defaultValue: 'expense',
+      validate: {
+        notEmpty: true
+      }
+    },
+    color: {
+      type: DataTypes.STRING(7), // For hex color codes (#RRGGBB)
+      defaultValue: '#64748b', // A default slate-500 color
+      validate: {
+        is: /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/i
+      }
+    },
+    icon: {
+      type: DataTypes.STRING,
+      defaultValue: 'tag', // Default icon name
+      validate: {
+        notEmpty: true
+      }
+    },
+    isActive: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true
+    },
+    systemDefault: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
+    }
+  }, {
+    timestamps: true, // Adds createdAt and updatedAt
+    paranoid: true, // Enables soft deletion
+    indexes: [
+      {
+        unique: true,
+        fields: ['name', 'type'], // Unique name within each type
+        name: 'category_name_type_unique'
+      }
+    ]
   });
+
+  // Associations
+  Category.associate = (models) => {
+    Category.hasMany(models.Transaction, {
+      foreignKey: 'categoryId',
+      as: 'transactions'
+    });
+    Category.hasMany(models.Budget, {
+      foreignKey: 'categoryId',
+      as: 'budgets'
+    });
+    Category.belongsTo(models.User, {
+      foreignKey: 'userId',
+      as: 'user'
+    });
+  };
 
   return Category;
 };

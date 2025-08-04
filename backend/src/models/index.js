@@ -3,34 +3,129 @@ require('dotenv').config();
 
 const sequelize = new Sequelize(process.env.DATABASE_URL, {
   dialect: 'postgres',
-  logging: false, // set to true for SQL query logs
+  logging: process.env.NODE_ENV === 'development' ? console.log : false,
+  dialectOptions: {
+    ssl: process.env.DB_SSL === 'true' ? {
+      require: true,
+      rejectUnauthorized: false
+    } : false
+  },
+  pool: {
+    max: 5,
+    min: 0,
+    acquire: 30000,
+    idle: 10000
+  }
 });
 
-const db = {};
+const db = {
+  Sequelize,
+  sequelize,
+  User: require('./User')(sequelize, Sequelize),
+  Household: require('./Household')(sequelize, Sequelize),
+  Transaction: require('./Transaction')(sequelize, Sequelize),
+  Category: require('./Category')(sequelize, Sequelize),
+  Budget: require('./Budget')(sequelize, Sequelize),
+  Receipt: require('./Receipt')(sequelize, Sequelize),
+  ReceiptItem: require('./ReceiptItem')(sequelize, Sequelize)
+};
 
-db.Sequelize = Sequelize;
-db.sequelize = sequelize;
+// Define associations
+function setupAssociations() {
+  // User-Household relationships
+  db.User.belongsTo(db.Household, {
+    foreignKey: {
+      allowNull: false,
+      name: 'householdId'
+    },
+    as: 'household'
+  });
+  
+  db.Household.hasMany(db.User, {
+    foreignKey: 'householdId',
+    as: 'members'
+  });
 
-// Import models
-db.User = require('./User')(sequelize, Sequelize);
-db.Household = require('./Household')(sequelize, Sequelize);
-db.Transaction = require('./Transaction')(sequelize, Sequelize);
-db.Category = require('./Category')(sequelize, Sequelize);
-db.Budget = require('./Budget')(sequelize, Sequelize);
-db.Receipt = require('./Receipt')(sequelize, Sequelize);
-db.ReceiptItem = require('./ReceiptItem')(sequelize, Sequelize);
+  // Transaction relationships
+  db.Transaction.belongsTo(db.User, {
+    foreignKey: {
+      allowNull: false,
+      name: 'userId'
+    },
+    as: 'user'
+  });
+  
+  db.Transaction.belongsTo(db.Category, {
+    foreignKey: {
+      allowNull: false,
+      name: 'categoryId'
+    },
+    as: 'category'
+  });
 
-// Define associations below
-db.User.belongsTo(db.Household);
-db.Household.hasMany(db.User);
+  // Budget relationships
+  db.Budget.belongsTo(db.Category, {
+    foreignKey: {
+      allowNull: false,
+      name: 'categoryId'
+    },
+    as: 'category'
+  });
+  
+  db.Budget.belongsTo(db.Household, {
+    foreignKey: {
+      allowNull: false,
+      name: 'householdId'
+    },
+    as: 'household'
+  });
 
-db.Transaction.belongsTo(db.User);
-db.Transaction.belongsTo(db.Category);
+  // Receipt relationships
+  db.Receipt.belongsTo(db.User, {
+    foreignKey: {
+      allowNull: false,
+      name: 'userId'
+    },
+    as: 'user'
+  });
+  
+  db.Receipt.hasMany(db.ReceiptItem, {
+    foreignKey: {
+      allowNull: false,
+      name: 'receiptId'
+    },
+    as: 'items',
+    onDelete: 'CASCADE'
+  });
 
-db.Budget.belongsTo(db.Category);
-db.Budget.belongsTo(db.Household);
+  // Category-Household relationship (if categories are household-specific)
+  db.Category.belongsTo(db.Household, {
+    foreignKey: {
+      allowNull: false,
+      name: 'householdId'
+    },
+    as: 'household'
+  });
+}
 
-db.Receipt.belongsTo(db.User);
-db.Receipt.hasMany(db.ReceiptItem);
+setupAssociations();
+
+// Test the database connection
+async function testConnection() {
+  try {
+    await sequelize.authenticate();
+    console.log('Database connection has been established successfully.');
+    
+    if (process.env.NODE_ENV === 'development') {
+      await sequelize.sync({ alter: true });
+      console.log('Database synchronized');
+    }
+  } catch (error) {
+    console.error('Unable to connect to the database:', error);
+    process.exit(1);
+  }
+}
+
+testConnection();
 
 module.exports = db;
