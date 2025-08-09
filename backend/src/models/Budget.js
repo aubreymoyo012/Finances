@@ -21,6 +21,7 @@ module.exports = (sequelize, DataTypes) => {
     },
     startDate: {
       type: DataTypes.DATEONLY,
+      defaultValue: DataTypes.NOW,
       allowNull: false,
       validate: {
         isDate: true
@@ -57,7 +58,7 @@ module.exports = (sequelize, DataTypes) => {
   // Add associations in the class method
   Budget.associate = (models) => {
     Budget.belongsTo(models.Household, { foreignKey: 'householdId' });
-    Budget.belongsTo(models.Category, { foreignKey: 'categoryId' });
+    Budget.belongsTo(models.Category, { foreignKey: 'categoryId', as: 'category' });
   };
 
   return Budget;

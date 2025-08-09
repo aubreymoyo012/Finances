@@ -24,8 +24,11 @@ passport.use(
         const hh = await Household.create({ name: user.name + "'s household" });
         await user.setHousehold(hh);
         await Category.bulkCreate(
-          ['Rent','Groceries','Utilities','Entertainment','Transport']
-           .map(name => ({ name, initial: true }))
+          defaults.map(name => ({
+            name,
+            initial: true,
+            householdId: hh.id    // assign to the new household
+          }))
         );
       }
 

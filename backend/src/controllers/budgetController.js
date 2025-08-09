@@ -7,10 +7,10 @@ exports.list = async (req, res) => {
       return res.status(400).json({ error: 'Household ID is required' });
     }
 
-    const budgets = await budgetService.findAll({
-      where: { householdId: req.user.householdId },
-      include: [categoryService]
-    });
+    const budgets = await budgetService.listBudgets(
+      req.user.householdId,
+      { includeCategory: true },
+    );
     
     res.json(budgets);
   } catch (error) {
@@ -22,6 +22,7 @@ exports.list = async (req, res) => {
 exports.create = async (req, res) => {
   try {
     const { categoryId, amount, period } = req.body;
+    body('startDate').isISO8601().toDate();
 
     if (!req.user?.householdId) {
       return res.status(400).json({ error: 'Household ID is required' });
