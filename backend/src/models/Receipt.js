@@ -60,8 +60,11 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: false,
       validate: {
-        isUrl: {
-          msg: 'Invalid image URL format'
+        // allow either absolute URL or /uploads/... local path
+        isValidPathOrUrl(value) {
+          const isLocal = typeof value === 'string' && value.startsWith('/uploads/');
+          const isHttp = /^https?:\/\/.+/.test(value);
+          if (!isLocal && !isHttp) throw new Error('Invalid image path or URL');
         }
       }
     },
