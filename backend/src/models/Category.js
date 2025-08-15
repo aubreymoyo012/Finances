@@ -8,7 +8,6 @@ module.exports = (sequelize, DataTypes) => {
     },
     name: {
       type: DataTypes.STRING,
-      unique: true,
       allowNull: false,
       validate: {
         notEmpty: {
@@ -53,13 +52,10 @@ module.exports = (sequelize, DataTypes) => {
   }, {
     timestamps: true, // Adds createdAt and updatedAt
     paranoid: true, // Enables soft deletion
-    indexes: [
-      {
-        unique: true,
-        fields: ['name', 'type'], // Unique name within each type
-        name: 'category_name_type_unique'
-      }
-    ]
+    householdId: {
+      type: DataTypes.UUID,
+      allowNull: false
+    },
   });
 
   // Associations

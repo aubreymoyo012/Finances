@@ -7,8 +7,8 @@ module.exports = async (Category) => {
     { name: 'Healthcare', type: 'expense', color: '#98D8C8', icon: 'heart' },
     { name: 'Entertainment', type: 'expense', color: '#F06292', icon: 'film' },
     { name: 'Dining Out', type: 'expense', color: '#7986CB', icon: 'utensils' },
-    { name: 'Savings', type: 'saving', color: '#66BB6A', icon: 'piggy-bank' },
-    { name: 'Investments', type: 'saving', color: '#26A69A', icon: 'chart-line' },
+    { name: 'Savings', type: 'savings', color: '#66BB6A', icon: 'piggy-bank' },
+    { name: 'Investments', type: 'savings', color: '#26A69A', icon: 'chart-line' },
     { name: 'Salary', type: 'income', color: '#81C784', icon: 'money-bill-wave' },
     { name: 'Bonus', type: 'income', color: '#AED581', icon: 'gift' },
     { name: 'Freelance', type: 'income', color: '#DCE775', icon: 'laptop-code' }

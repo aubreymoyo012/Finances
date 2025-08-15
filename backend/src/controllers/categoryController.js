@@ -1,9 +1,14 @@
 // backend/src/controllers/categoryController.js
-const { categoryService } = require('../services');
+const { categoryService } = require('../services'); // ensure correct relative path
 
 exports.list = async (req, res) => {
   try {
-    const categories = await categoryService.listCategories();
+    const categories = await categoryService.listCategories({
+      householdId: req.user?.householdId || null,   // default to requester’s household
+      // optionally: type: req.query.type,
+      // optionally: includeInactive: req.query.includeInactive === 'true',
+      // optionally: includeCounts: req.query.includeCounts === 'true',
+    });
     res.json(categories);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -12,14 +17,17 @@ exports.list = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    if (!req.body.name) {
-      return res.status(400).json({ error: 'Name is required' });
-    }
-    
+    // name already validated in routes/categories.js
+    const { name, type, color, icon } = req.body;
+
     const category = await categoryService.createCategory({
-      name: req.body.name
+      name,
+      type,    // optional (defaults to 'expense' in service)
+      color,   // optional
+      icon,    // optional
+      householdId: req.user?.householdId, // *** required by model association ***
     });
-    
+
     res.status(201).json(category);
   } catch (error) {
     res.status(500).json({ error: error.message });

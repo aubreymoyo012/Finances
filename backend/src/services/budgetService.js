@@ -1,4 +1,4 @@
-const { Budget, Category, sequelize } = require('../models');
+const { Budget, Category, sequelize, Sequelize } = require('../models');
 const { NotFoundError, InvalidInputError } = require('../utils/errors');
 
 async function listBudgets(householdId, options = {}) {
@@ -122,6 +122,7 @@ async function deleteBudget(id, householdId) {
     return true;
   });
 }
+const { QueryTypes } = Sequelize;
 
 // Additional service methods
 async function getBudgetSummary(householdId, period) {
@@ -140,7 +141,7 @@ async function getBudgetSummary(householdId, period) {
     ORDER BY "totalAmount" DESC
   `, {
     replacements: { householdId, period },
-    type: sequelize.QueryTypes.SELECT
+    type: QueryTypes.SELECT
   });
 }
 
