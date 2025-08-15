@@ -80,8 +80,8 @@ async function initializeDatabase() {
       alter: process.env.NODE_ENV !== 'production',
       logging: logger.info
     };
-    await db.sequelize.sync(syncOptions);
-    logger.info('Database models synchronized');
+    // await db.sequelize.sync(syncOptions);
+    // logger.info('Database models synchronized');
 
     await seedCategories(db.Category);
     logger.info('Default categories seeded');

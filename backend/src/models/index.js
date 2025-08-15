@@ -116,10 +116,10 @@ async function testConnection() {
     await sequelize.authenticate();
     console.log('Database connection has been established successfully.');
     
-    if (process.env.NODE_ENV === 'development') {
-      await sequelize.sync({ alter: true });
-      console.log('Database synchronized');
-    }
+    // if (process.env.NODE_ENV === 'development') {
+    //   await sequelize.sync({ alter: true });
+    //   console.log('Database synchronized');
+    // }
   } catch (error) {
     console.error('Unable to connect to the database:', error);
     process.exit(1);
