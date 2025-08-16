@@ -1,11 +1,20 @@
-// backend/src/controllers/receiptController.js (only the upload handler)
+// backend/src/controllers/receiptController.js
 const tesseract = require('tesseract.js');
 const receiptService = require('../services/receiptService');
-const { validateReceiptData } = require('../validators/receiptValidator');
+
+// Minimal inline validation to replace missing ../validators/receiptValidator
+function validateReceiptData(body = {}) {
+  const errs = [];
+  if (body.total != null && !Number.isFinite(Number(body.total))) errs.push('total must be numeric');
+  if (body.date && Number.isNaN(Date.parse(body.date))) errs.push('date must be a valid ISO date');
+  if (body.store != null && typeof body.store !== 'string') errs.push('store must be a string');
+  return errs.length ? errs.join(', ') : null;
+}
 
 exports.upload = async (req, res) => {
   try {
-    if (!req.user?.id) return res.status(401).json({ error: 'Authentication required' });
+    const userId = req.user?.userId || req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
     if (!req.file) return res.status(400).json({ error: 'Receipt image file is required' });
 
     const validationError = validateReceiptData(req.body);
@@ -14,14 +23,16 @@ exports.upload = async (req, res) => {
     let worker;
     try {
       worker = await tesseract.createWorker();
-      await worker.loadLanguage('eng');
-      await worker.initialize('eng');
+      await worker.load(); // required before loadLanguage / initialize
+      const langs = process.env.TESSERACT_LANGS || 'eng';
+      await worker.loadLanguage(langs);
+      await worker.initialize(langs);
 
       const { data: { text } } = await worker.recognize(req.file.path);
-      const items = exports.parseReceiptText(text);
+      const items = exports.parseReceiptText ? exports.parseReceiptText(text) : [];
 
       const receipt = await receiptService.uploadReceipt({
-        userId: req.user.id,
+        userId,
         store: req.body.store,
         total: req.body.total != null ? parseFloat(req.body.total) : null,
         date: req.body.date ? new Date(req.body.date) : new Date(),

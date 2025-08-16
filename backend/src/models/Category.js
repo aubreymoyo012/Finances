@@ -27,6 +27,10 @@ module.exports = (sequelize, DataTypes) => {
         notEmpty: true
       }
     },
+    householdId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+    },
     color: {
       type: DataTypes.STRING(7), // For hex color codes (#RRGGBB)
       defaultValue: '#64748b', // A default slate-500 color
@@ -50,12 +54,17 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: false
     }
   }, {
+    tableName: 'categories',   // IMPORTANT: matches migration
+    underscored: true,  
     timestamps: true, // Adds createdAt and updatedAt
-    paranoid: true, // Enables soft deletion
-    householdId: {
-      type: DataTypes.UUID,
-      allowNull: false
-    },
+    paranoid: false, // Enables soft deletion
+    indexes: [
+      {
+        unique: true,
+        fields: ['householdId', 'name', 'type'],
+        name: 'category_household_name_type_unique',
+      },
+    ],
   });
 
   // Associations
@@ -68,10 +77,10 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: 'categoryId',
       as: 'budgets'
     });
-    Category.belongsTo(models.User, {
-      foreignKey: 'userId',
-      as: 'user'
-    });
+    // Category.belongsTo(models.User, {
+    //   foreignKey: 'userId',
+    //   as: 'user'
+    // });
   };
 
   return Category;

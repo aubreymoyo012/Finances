@@ -1,130 +1,108 @@
 // backend/src/index.js
 require('dotenv').config();
+
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const passport = require('passport');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
+
 const db = require('./models');
-const { seedCategories } = require('./utils/seeders');
-const { seedDemoData } = require('./utils/demoSeeder');
 const logger = require('./utils/logger');
 
-// Configuration validation
+// Validate config early (throws on fatal issues)
 require('./utils/configValidator')();
 
-// Initialize Express app
 const app = express();
 
-// Security Middleware
+// Security
 app.use(helmet());
-app.use(cors({
-  origin: process.env.FRONTEND_URLS?.split(',') || 'http://localhost:3000',
-  credentials: true
+
+// CORS
+const FRONTEND_URLS = process.env.FRONTEND_URLS
+  ? process.env.FRONTEND_URLS.split(',').map(s => s.trim()).filter(Boolean)
+  : ['http://localhost:3000'];
+app.use(cors({ origin: FRONTEND_URLS, credentials: true }));
+
+// Logs
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev', {
+  stream: logger.stream
 }));
 
-// Request logging
-app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev', { 
-  stream: logger.stream 
-}));
-
-// Rate limiting
+// Rate limit (basic)
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000,
   max: 200,
   message: 'Too many requests from this IP, please try again later'
 });
 
-// Body parsing with size limit
+// Body parsers
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
-// Passport initialization
+// Auth
 app.use(passport.initialize());
-require('./config/passportStrategies'); // All auth strategies
+require('./config/passport');
 
-// API Routes
+// Static uploads (serve /uploads/*)
+app.use('/uploads', express.static(path.resolve('uploads')));
+
+// API
 const apiRouter = express.Router();
 apiRouter.use(apiLimiter);
 
-// Mount route modules
-apiRouter.use('/auth', require('./routes/auth'));
+// NOTE: Mount auth router at root to avoid /auth/auth/* if your router includes /auth/* paths.
+apiRouter.use('/', require('./routes/auth'));
 apiRouter.use('/transactions', require('./routes/transactions'));
 apiRouter.use('/categories', require('./routes/categories'));
 apiRouter.use('/budgets', require('./routes/budgets'));
+
+// If your file was accidentally named "reciepts.js", please rename it to "receipts.js".
 apiRouter.use('/receipts', require('./routes/receipts'));
 apiRouter.use('/users', require('./routes/users'));
 
-// Health check endpoint
+// Health
 apiRouter.get('/health', (req, res) => res.json({ status: 'healthy' }));
 
-// Versioned API
+// Versioned mount
 app.use('/api/v1', apiRouter);
 
-// Static files (if serving any)
-if (process.env.SERVE_STATIC === 'true') {
-  app.use(express.static('public'));
-}
-
-// Global error handlers (must be last)
+// 404 + error handlers (last)
 app.use(require('./middlewares/notFoundHandler'));
 app.use(require('./middlewares/errorHandler'));
 
-async function initializeDatabase() {
+// --- boot ---
+async function start() {
   try {
     await db.sequelize.authenticate();
     logger.info('Database connection established');
 
-    const syncOptions = {
-      alter: process.env.NODE_ENV !== 'production',
-      logging: logger.info
-    };
-    // await db.sequelize.sync(syncOptions);
-    // logger.info('Database models synchronized');
+    // Do NOT sync here if you’re using migrations
+    // await db.sequelize.sync({ alter: process.env.NODE_ENV !== 'production' });
 
-    await seedCategories(db.Category);
-    logger.info('Default categories seeded');
-
-    if (process.env.SEED_DEMO_DATA === 'true') {
-      await seedDemoData(db);
-      logger.info('Demo data initialized');
-    }
-  } catch (error) {
-    logger.error('Database initialization failed:', error);
-    throw error;
-  }
-}
-
-async function startServer() {
-  try {
-    await initializeDatabase();
-
-    const PORT = process.env.PORT || 4000;
+    const PORT = Number(process.env.PORT) || 4000;
     const server = app.listen(PORT, () => {
-      logger.info(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+      logger.info(`Server running in ${process.env.NODE_ENV || 'development'} on :${PORT}`);
     });
 
-    // Handle shutdown gracefully
+    // Graceful shutdown
     process.on('SIGTERM', () => {
-      logger.info('SIGTERM received. Shutting down gracefully...');
+      logger.info('SIGTERM received. Shutting down...');
       server.close(() => {
         db.sequelize.close().then(() => {
-          logger.info('Server and database connections closed');
+          logger.info('Server and DB connections closed');
           process.exit(0);
         });
       });
     });
-
-  } catch (error) {
-    logger.error('Failed to start server:', error);
+  } catch (err) {
+    logger.error('Failed to start server', err);
     process.exit(1);
   }
 }
 
-// Only start server if not in test mode
-if (process.env.NODE_ENV !== 'test') {
-  startServer();
-}
+if (process.env.NODE_ENV !== 'test') start();
 
-module.exports = app; // For testing
+module.exports = app;

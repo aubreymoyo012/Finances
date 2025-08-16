@@ -1,119 +1,128 @@
-// controllers/transactionController.js
+// backend/src/controllers/transactionController.js
+const logger = require('../utils/logger');
 const transactionService = require('../services/transactionService');
-const { validateTransaction } = require('../validators/transactionValidator');
 
+/**
+ * Helper: normalize request user id (supports either userId or id on req.user)
+ */
+function getAuthUserId(req) {
+  return req?.user?.userId || req?.user?.id || null;
+}
+
+/**
+ * GET /transactions
+ * Optionally supports basic filters via query params (service may ignore extras).
+ */
 exports.list = async (req, res) => {
   try {
-    if (!req.user?.id) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
+    const userId = getAuthUserId(req);
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
 
-    const transactions = await transactionService.listTransactions(req.user.id);
+    const filters = {
+      type: req.query.type,                // 'income' | 'expense'
+      categoryId: req.query.categoryId,    // UUID
+      from: req.query.from,                // ISO date
+      to: req.query.to,                    // ISO date
+      limit: req.query.limit ? parseInt(req.query.limit, 10) : undefined,
+      offset: req.query.offset ? parseInt(req.query.offset, 10) : undefined
+    };
+
+    const transactions = await transactionService.listTransactions(userId, filters);
     res.json(transactions);
   } catch (error) {
-    console.error('Error listing transactions:', error);
+    logger.error('Error listing transactions', error);
     res.status(500).json({ error: 'Failed to retrieve transactions' });
   }
 };
 
+/**
+ * POST /transactions
+ * body: { amount, type, date?, description?, categoryId }
+ */
 exports.create = async (req, res) => {
   try {
-    const { amount, type, date, description, categoryId } = req.body;
+    const userId = getAuthUserId(req);
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
 
-    // Validate user and input
-    if (!req.user?.id) {
-      return res.status(401).json({ error: 'Authentication required' });
+    // Routes should validate, but we still normalize here
+    const { amount, type, date, description, categoryId } = req.body || {};
+
+    const parsedAmount = typeof amount === 'string' ? Number(amount) : amount;
+    if (!Number.isFinite(parsedAmount)) {
+      return res.status(400).json({ error: 'Amount must be a valid number' });
     }
 
-    const validationError = validateTransaction(req.body);
-    if (validationError) {
-      return res.status(400).json({ error: validationError });
-    }
-
-    const transaction = await transactionService.createTransaction({
-      userId: req.user.id,
-      amount: parseFloat(amount),
+    const payload = {
+      userId,
+      amount: parsedAmount,
       type,
-      date: new Date(date),
-      description: description?.trim(),
+      date: date ? new Date(date) : new Date(),
+      description: typeof description === 'string' ? description.trim() : undefined,
       categoryId
-    });
+    };
 
+    const transaction = await transactionService.createTransaction(payload);
     res.status(201).json(transaction);
   } catch (error) {
-    console.error('Error creating transaction:', error);
-    res.status(500).json({ 
-      error: error.message || 'Failed to create transaction' 
-    });
+    logger.error('Error creating transaction', error);
+    res.status(500).json({ error: error.message || 'Failed to create transaction' });
   }
 };
 
+/**
+ * PUT /transactions/:id
+ * body: { amount, type, date?, description?, categoryId }
+ */
 exports.update = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { amount, type, date, description, categoryId } = req.body;
+    const userId = getAuthUserId(req);
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
 
-    if (!req.user?.id) {
-      return res.status(401).json({ error: 'Authentication required' });
+    const { id } = req.params || {};
+    if (!id) return res.status(400).json({ error: 'Transaction ID is required' });
+
+    const { amount, type, date, description, categoryId } = req.body || {};
+
+    const parsedAmount = typeof amount === 'string' ? Number(amount) : amount;
+    if (!Number.isFinite(parsedAmount)) {
+      return res.status(400).json({ error: 'Amount must be a valid number' });
     }
 
-    if (!id) {
-      return res.status(400).json({ error: 'Transaction ID is required' });
-    }
+    const updates = {
+      amount: parsedAmount,
+      type,
+      date: date ? new Date(date) : undefined,
+      description: typeof description === 'string' ? description.trim() : undefined,
+      categoryId
+    };
 
-    const validationError = validateTransaction(req.body);
-    if (validationError) {
-      return res.status(400).json({ error: validationError });
-    }
-
-    const transaction = await transactionService.updateTransaction(
-      id,
-      req.user.id,
-      {
-        amount: parseFloat(amount),
-        type,
-        date: new Date(date),
-        description: description?.trim(),
-        categoryId
-      }
-    );
-
-    if (!transaction) {
-      return res.status(404).json({ error: 'Transaction not found' });
-    }
+    const transaction = await transactionService.updateTransaction(id, userId, updates);
+    if (!transaction) return res.status(404).json({ error: 'Transaction not found' });
 
     res.json(transaction);
   } catch (error) {
-    console.error('Error updating transaction:', error);
-    res.status(500).json({ 
-      error: error.message || 'Failed to update transaction' 
-    });
+    logger.error('Error updating transaction', error);
+    res.status(500).json({ error: error.message || 'Failed to update transaction' });
   }
 };
 
+/**
+ * DELETE /transactions/:id
+ */
 exports.delete = async (req, res) => {
   try {
-    const { id } = req.params;
+    const userId = getAuthUserId(req);
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
 
-    if (!req.user?.id) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
+    const { id } = req.params || {};
+    if (!id) return res.status(400).json({ error: 'Transaction ID is required' });
 
-    if (!id) {
-      return res.status(400).json({ error: 'Transaction ID is required' });
-    }
-
-    const success = await transactionService.deleteTransaction(id, req.user.id);
-    
-    if (!success) {
-      return res.status(404).json({ error: 'Transaction not found' });
-    }
+    const success = await transactionService.deleteTransaction(id, userId);
+    if (!success) return res.status(404).json({ error: 'Transaction not found' });
 
     res.sendStatus(204);
   } catch (error) {
-    console.error('Error deleting transaction:', error);
-    res.status(500).json({ 
-      error: error.message || 'Failed to delete transaction' 
-    });
+    logger.error('Error deleting transaction', error);
+    res.status(500).json({ error: error.message || 'Failed to delete transaction' });
   }
 };

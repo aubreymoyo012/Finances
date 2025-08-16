@@ -1,101 +1,56 @@
-const bcrypt = require('bcrypt');
-const { faker } = require('@faker-js/faker');
-const { Budget, Category, Transaction } = require('../models');
+// backend/src/utils/seedDemo.js
+const db = require('../models');
+const { Household, User, Category, Budget, Transaction } = db;
+const { seedCategories } = require('./seedCategories');
 
-module.exports = async (db) => {
-  try {
-    // Create demo household
-    const [household] = await db.Household.findOrCreate({
-      where: { name: 'Demo Household' },
-      defaults: {
-        currency: 'USD',
-        timezone: 'America/New_York'
-      }
-    });
+async function seedDemo() {
+  // create demo household + user
+  const hh = await Household.create({ name: 'Demo Household' });
+  const user = await User.create({
+    name: 'Demo User',
+    email: 'demo@example.com',
+    passwordHash: 'demo', // replace with a real hash in non-dev!
+    householdId: hh.id
+  });
 
-    // Create demo user with hashed password
-    const demoPassword = await bcrypt.hash('demo123', 10);
-    const [user] = await db.User.findOrCreate({
-      where: { email: 'demo@example.com' },
-      defaults: {
-        name: 'Demo User',
-        password: demoPassword,
-        isVerified: true,
-        role: 'admin',
-        profilePicture: faker.image.avatar()
-      }
-    });
+  // seed household-scoped categories and use them
+  const categories = await seedCategories(hh.id); // <-- array of Category instances
 
-    // Associate user with household
-    await user.setHousehold(household);
+  const groceries = categories.find(c => c.name === 'Groceries' && c.type === 'expense');
+  const salary    = categories.find(c => c.name === 'Salary'    && c.type === 'income');
 
-    // Seed default categories if they don't exist
-    const categorySeeder = require('./seedCategories');
-    const categories = await categorySeeder(db.Category);
+  // demo transactions
+  await Transaction.bulkCreate([
+    {
+      householdId: hh.id,
+      userId: user.id,
+      categoryId: groceries.id,
+      type: 'expense',
+      amount: -56.12,
+      description: 'Weekly groceries',
+      date: new Date()
+    },
+    {
+      householdId: hh.id,
+      userId: user.id,
+      categoryId: salary.id,
+      type: 'income',
+      amount: 2400.00,
+      description: 'Monthly salary',
+      date: new Date()
+    }
+  ]);
 
-    // Create sample budgets
-    const budgets = await Promise.all([
-      Budget.create({
-        householdId: household.id,
-        categoryId: categories.find(c => c.name === 'Groceries').id,
-        amount: 600,
-        period: 'monthly'
-      }),
-      Budget.create({
-        householdId: household.id,
-        categoryId: categories.find(c => c.name === 'Utilities').id,
-        amount: 300,
-        period: 'monthly'
-      })
-    ]);
+  // demo budget
+  await Budget.create({
+    householdId: hh.id,
+    categoryId: groceries.id,
+    period: 'monthly',
+    amount: 400,
+    startDate: new Date(),
+  });
 
-    // Create sample transactions
-    const transactions = await Promise.all([
-      Transaction.create({
-        userId: user.id,
-        householdId: household.id,
-        categoryId: categories.find(c => c.name === 'Groceries').id,
-        amount: -85.50,
-        type: 'expense',
-        description: 'Weekly grocery shopping',
-        date: faker.date.recent({ days: 3 })
-      }),
-      Transaction.create({
-        userId: user.id,
-        householdId: household.id,
-        categoryId: categories.find(c => c.name === 'Utilities').id,
-        amount: -120.75,
-        type: 'expense',
-        description: 'Electric bill',
-        date: faker.date.recent({ days: 10 })
-      }),
-      Transaction.create({
-        userId: user.id,
-        householdId: household.id,
-        categoryId: categories.find(c => c.name === 'Salary').id,
-        amount: 2500,
-        type: 'income',
-        description: 'Monthly salary',
-        date: faker.date.recent({ days: 2 })
-      })
-    ]);
+  return { household: hh, user, categories };
+}
 
-    console.log('Demo data seeded successfully:');
-    console.log(`- Household: ${household.name}`);
-    console.log(`- User: ${user.email}`);
-    console.log(`- Categories: ${categories.length} seeded`);
-    console.log(`- Budgets: ${budgets.length} created`);
-    console.log(`- Transactions: ${transactions.length} created`);
-
-    return {
-      household,
-      user,
-      categories,
-      budgets,
-      transactions
-    };
-  } catch (error) {
-    console.error('Error seeding demo data:', error);
-    throw error;
-  }
-};
+module.exports = { seedDemo };

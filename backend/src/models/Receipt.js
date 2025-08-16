@@ -31,13 +31,13 @@ module.exports = (sequelize, DataTypes) => {
         }
       }
     },
-    taxAmount: {
-      type: DataTypes.DECIMAL(10, 2),
-      validate: {
-        isDecimal: true,
-        min: 0
-      }
-    },
+    // taxAmount: {
+    //   type: DataTypes.DECIMAL(10, 2),
+    //   validate: {
+    //     isDecimal: true,
+    //     min: 0
+    //   }
+    // },
     date: {
       type: DataTypes.DATEONLY,
       allowNull: false,
@@ -53,8 +53,10 @@ module.exports = (sequelize, DataTypes) => {
       }
     },
     paymentMethod: {
-      type: DataTypes.ENUM('cash', 'credit_card', 'debit_card', 'mobile_payment', 'other'),
-      defaultValue: 'credit_card'
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: 'credit_card',
+      validate: { isIn: [['cash', 'credit_card', 'debit_card', 'mobile_payment', 'other']] }
     },
     imageUrl: {
       type: DataTypes.STRING,
@@ -80,8 +82,10 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.TEXT
     }
   }, {
+    tableName: 'receipts',   // IMPORTANT: matches migration
+    underscored: true,  
     timestamps: true,
-    paranoid: true, // Enables soft deletion
+    paranoid: false, // Enables soft deletion
     indexes: [
       {
         fields: ['date']

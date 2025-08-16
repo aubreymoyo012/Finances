@@ -47,18 +47,20 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: true
     }
   }, {
+    tableName: 'households',   // IMPORTANT: matches migration
+    underscored: true,  
     timestamps: true,
-    paranoid: true, // Enables soft deletion
-    indexes: [
-      {
-        fields: ['name'],
-        unique: true
-      },
-      {
-        fields: ['invitationCode'],
-        unique: true
-      }
-    ]
+    paranoid: false, // Enables soft deletion
+    // indexes: [
+    //   {
+    //     fields: ['name'],
+    //     unique: true
+    //   },
+    //   {
+    //     fields: ['invitationCode'],
+    //     unique: true
+    //   }
+    // ]
   });
 
   // Associations

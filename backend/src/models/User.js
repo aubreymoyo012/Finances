@@ -97,8 +97,16 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: 'UTC'
     }
   }, {
+    tableName: 'users',   // IMPORTANT: matches migration
+    underscored: true,  
     timestamps: true,
-    paranoid: true, // Enables soft deletion
+    paranoid: false, // Enables soft deletion
+
+    passwordHash: {
+      type: DataTypes.STRING,
+      field: 'passwordHash'
+    },
+
     indexes: [
       {
         fields: ['email'],
@@ -125,7 +133,7 @@ module.exports = (sequelize, DataTypes) => {
     },
     defaultScope: {
       attributes: {
-        exclude: ['password', 'verificationToken', 'passwordResetToken', 'passwordResetExpires']
+        exclude: ['passwordHash', 'verificationToken', 'passwordResetToken', 'passwordResetExpires']
       }
     },
     scopes: {

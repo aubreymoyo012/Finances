@@ -51,22 +51,22 @@ module.exports = (sequelize, DataTypes) => {
         }
       }
     },
-    status: {
-      type: DataTypes.ENUM('pending', 'completed', 'recurring', 'cancelled'),
-      defaultValue: 'completed'
-    },
-    paymentMethod: {
-      type: DataTypes.ENUM('cash', 'credit_card', 'debit_card', 'bank_transfer', 'digital_wallet', 'other'),
-      defaultValue: 'other'
-    },
-    referenceNumber: {
-      type: DataTypes.STRING(50),
-      comment: 'Bank reference or check number'
-    },
-    isTaxDeductible: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false
-    },
+    // status: {
+    //   type: DataTypes.ENUM('pending', 'completed', 'recurring', 'cancelled'),
+    //   defaultValue: 'completed'
+    // },
+    // paymentMethod: {
+    //   type: DataTypes.ENUM('cash', 'credit_card', 'debit_card', 'bank_transfer', 'digital_wallet', 'other'),
+    //   defaultValue: 'other'
+    // },
+    // referenceNumber: {
+    //   type: DataTypes.STRING(50),
+    //   comment: 'Bank reference or check number'
+    // },
+    // isTaxDeductible: {
+    //   type: DataTypes.BOOLEAN,
+    //   defaultValue: false
+    // },
     receiptId: {
       type: DataTypes.UUID,
       comment: 'Linked receipt document'
@@ -76,8 +76,10 @@ module.exports = (sequelize, DataTypes) => {
       comment: 'Additional transaction notes'
     }
   }, {
+    tableName: 'transactions',   // IMPORTANT: matches migration
+    underscored: true,  
     timestamps: true,
-    paranoid: true, // Enables soft deletion
+    paranoid: false, // Enables soft deletion
     indexes: [
       {
         fields: ['date']

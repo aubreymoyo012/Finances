@@ -15,9 +15,10 @@ module.exports = (sequelize, DataTypes) => {
       }
     },
     period: {
-      type: DataTypes.ENUM('monthly', 'weekly', 'yearly', 'quarterly'),
+      type: DataTypes.STRING,
+      allowNull: false,
       defaultValue: 'monthly',
-      allowNull: false
+      validate: { isIn: [['monthly','weekly','yearly','quarterly']] }
     },
     startDate: {
       type: DataTypes.DATEONLY,
@@ -43,8 +44,10 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: true
     }
   }, {
+    tableName: 'budgets',   // IMPORTANT: matches migration
+    underscored: true,  
     timestamps: true, // Adds createdAt and updatedAt
-    paranoid: true, // Adds deletedAt for soft deletes
+    paranoid: false, // Adds deletedAt for soft deletes
     indexes: [
       {
         fields: ['householdId'] // Assuming you'll add this association
