@@ -61,7 +61,7 @@ async function uploadReceipt({ userId, store, total, date, imageUrl, items = [] 
                 : 0;
         return sum + (Number.isFinite(q) && Number.isFinite(p) ? q * p : 0);
       }, 0);
-      if (Math.abs(itemsTotal - Number(total)) > 0.01) {
+      if (Number.isFinite(itemsTotal) && Math.abs(itemsTotal - Number(total)) > 0.02) {
         throw new InvalidInputError('Receipt total does not match sum of items');
       }
     }
