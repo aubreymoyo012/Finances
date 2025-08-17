@@ -28,7 +28,8 @@ const createBudgetValidation = [
 ];
 
 router.get('/', isAuth(), asyncHandler(budgetController.list));
-router.post('/', isAuth('admin'), createBudgetValidation, asyncHandler(budgetController.create));
+// anyone can make a budget now
+router.post('/', isAuth(), createBudgetValidation, asyncHandler(budgetController.create));
 
 // optional later: PUT /:id and DELETE /:id routes with isAuth('admin') and validate id param
 

@@ -45,7 +45,7 @@ module.exports = (sequelize, DataTypes) => {
     }
   }, {
     tableName: 'budgets',   // IMPORTANT: matches migration
-    underscored: true,  
+    underscored: false,  
     timestamps: true, // Adds createdAt and updatedAt
     paranoid: false, // Adds deletedAt for soft deletes
     indexes: [

@@ -73,6 +73,8 @@ app.use('/api/v1', apiRouter);
 app.use(require('./middlewares/notFoundHandler'));
 app.use(require('./middlewares/errorHandler'));
 
+// app.use('/uploads', express.static(path.resolve('uploads')));
+
 // --- boot ---
 async function start() {
   try {

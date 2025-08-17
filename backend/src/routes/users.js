@@ -11,7 +11,6 @@ const { User } = db;
 
 const router = express.Router();
 
-// Reusable helpers
 const sanitizeUser = (u) => ({
   id: u.id,
   email: u.email,
@@ -25,16 +24,18 @@ const sanitizeUser = (u) => ({
   updatedAt: u.updatedAt,
 });
 
-// ======= GET /users/me =======
-router.get('/users/me', isAuth(), asyncHandler(async (req, res) => {
+// NOTE: paths are relative because this router is mounted at /api/v1/users
+
+// GET /api/v1/users/me
+router.get('/me', isAuth(), asyncHandler(async (req, res) => {
   const user = await User.findByPk(req.user.userId);
   if (!user) return res.status(404).json({ error: 'User not found' });
   res.json(sanitizeUser(user));
 }));
 
-// ======= PATCH /users/me =======
+// PATCH /api/v1/users/me
 router.patch(
-  '/users/me',
+  '/me',
   isAuth(),
   [
     body('name').optional().isString().trim().isLength({ min: 2, max: 50 }),
@@ -59,9 +60,9 @@ router.patch(
   })
 );
 
-// ======= POST /users/change-password =======
+// POST /api/v1/users/change-password
 router.post(
-  '/users/change-password',
+  '/change-password',
   isAuth(),
   [
     body('newPassword').isString().isLength({ min: 8, max: 128 }),
@@ -73,7 +74,6 @@ router.post(
     const user = await User.findByPk(req.user.userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    // If user has a passwordHash set, require currentPassword
     if (user.passwordHash) {
       if (!currentPassword) return res.status(400).json({ error: 'currentPassword is required' });
       const ok = await bcrypt.compare(currentPassword, user.passwordHash);
@@ -87,9 +87,9 @@ router.post(
   })
 );
 
-// ======= GET /users (admin) ?page=&limit= =======
+// GET /api/v1/users  (admin)
 router.get(
-  '/users',
+  '/',
   isAuth('admin'),
   [
     query('page').optional().isInt({ min: 1 }).toInt(),
@@ -108,18 +108,13 @@ router.get(
       attributes: { exclude: ['passwordHash', 'verificationToken', 'passwordResetToken', 'passwordResetExpires'] },
     });
 
-    res.json({
-      page,
-      limit,
-      total: count,
-      data: rows.map(sanitizeUser),
-    });
+    res.json({ page, limit, total: count, data: rows.map(sanitizeUser) });
   })
 );
 
-// ======= GET /users/:id (self or admin) =======
+// GET /api/v1/users/:id (self or admin)
 router.get(
-  '/users/:id',
+  '/:id',
   isAuth(),
   [param('id').isUUID(), validateRequest],
   asyncHandler(async (req, res) => {
@@ -134,9 +129,9 @@ router.get(
   })
 );
 
-// ======= DELETE /users/:id (admin) =======
+// DELETE /api/v1/users/:id (admin)
 router.delete(
-  '/users/:id',
+  '/:id',
   isAuth('admin'),
   [param('id').isUUID(), validateRequest],
   asyncHandler(async (req, res) => {

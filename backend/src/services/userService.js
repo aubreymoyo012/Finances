@@ -1,4 +1,4 @@
-const { User, Household, sequelize } = require('../models');
+const { User, Household, sequelize, Sequelize } = require('../models');
 const bcrypt = require('bcrypt');
 const { NotFoundError, InvalidInputError, AuthenticationError } = require('../utils/errors');
 const jwt = require('jsonwebtoken');
@@ -207,7 +207,7 @@ async function resetPassword(token, newPassword) {
   const user = await User.findOne({
     where: {
       resetToken: token,
-      resetExpires: { [sequelize.Op.gt]: Date.now() }
+      resetExpires: { [Sequelize.Op.gt]: Date.now() }
     }
   });
 

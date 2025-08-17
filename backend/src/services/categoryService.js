@@ -12,7 +12,7 @@ async function listCategories(options = {}) {
   const where = {};
   if (householdId) where.householdId = householdId;
   if (type) where.type = type;
-  if (!includeInactive) where.isActive = true;
+  // if (!includeInactive) where.isActive = true;
 
   const include = [];
   const attributes = { 
@@ -73,7 +73,7 @@ async function createCategory(data) {
       color,
       icon,
       householdId,
-      isActive: true
+      // isActive: true
     }, { transaction: t });
   });
 }
@@ -144,15 +144,20 @@ async function deleteCategory(id, householdId = null) {
       transaction: t
     });
 
-    if (transactionCount > 0 || budgetCount > 0) {
-      // Soft-delete if in use
-      await category.update({ isActive: false }, { transaction: t });
-      return { message: 'Category deactivated as it is in use' };
-    }
+    // if (transactionCount > 0 || budgetCount > 0) {
+    //   // Soft-delete if in use
+    //   await category.update({ transaction: t });
+    //   return { message: 'Category deactivated as it is in use' };
+    // }
 
     // Hard delete if not in use
+    // await category.destroy({ transaction: t });
+    // return { message: 'Category deleted successfully' };
+
+    if (inUse) {
+      throw new Error('Category is in use and cannot be deleted');
+    }
     await category.destroy({ transaction: t });
-    return { message: 'Category deleted successfully' };
   });
 }
 

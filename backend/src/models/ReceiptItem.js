@@ -60,7 +60,7 @@ module.exports = (sequelize, DataTypes) => {
     },
   }, {
     tableName: 'receipt_items',   // IMPORTANT: matches migration
-    underscored: true,            // created_at/updated_at in snake_case
+    underscored: false,            // created_at/updated_at in snake_case
     timestamps: true,
     paranoid: false,              // you don’t have deletedAt in the table
     indexes: [
